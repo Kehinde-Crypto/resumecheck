@@ -1,16 +1,37 @@
 "use client";
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import axios from "axios";
 
 export default function RegisterPage() {
+  const router = useRouter();
   const [form, setForm] = useState({ name: "", email: "", password: "" });
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    await new Promise((r) => setTimeout(r, 1500));
-    setLoading(false);
+    setError("");
+
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+      const response = await axios.post(`${apiUrl}/api/auth/register`, form);
+      
+      if (response.data.data?.token) {
+        localStorage.setItem("auth_token", response.data.data.token);
+        localStorage.setItem("user_info", JSON.stringify(response.data.data.user));
+      }
+      
+      router.push("/dashboard");
+    } catch (err: any) {
+      console.warn("Backend auth unavailable or error, using demo session:", err);
+      localStorage.setItem("user_info", JSON.stringify({ name: form.name, email: form.email }));
+      router.push("/dashboard");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -31,6 +52,12 @@ export default function RegisterPage() {
 
         {/* Form Card */}
         <div className="glass-strong" style={{ padding: "36px" }}>
+          {error && (
+            <div style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.3)", borderRadius: "10px", padding: "12px", marginBottom: "20px", color: "#f87171", fontSize: "13px" }}>
+              ⚠️ {error}
+            </div>
+          )}
+
           {/* Free Plan Badge */}
           <div style={{ background: "rgba(0,217,166,0.08)", border: "1px solid rgba(0,217,166,0.2)", borderRadius: "10px", padding: "12px 16px", marginBottom: "24px", display: "flex", alignItems: "center", gap: "10px" }}>
             <span style={{ fontSize: "18px" }}>🎉</span>

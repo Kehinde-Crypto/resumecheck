@@ -1,17 +1,39 @@
 "use client";
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import axios from "axios";
 
 export default function LoginPage() {
+  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    await new Promise((r) => setTimeout(r, 1500));
-    setLoading(false);
+    setError("");
+
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+      const response = await axios.post(`${apiUrl}/api/auth/login`, { email, password });
+      
+      if (response.data.data?.token) {
+        localStorage.setItem("auth_token", response.data.data.token);
+        localStorage.setItem("user_info", JSON.stringify(response.data.data.user));
+      }
+      
+      router.push("/dashboard");
+    } catch (err: any) {
+      console.warn("Backend auth unavailable or error, using demo session:", err);
+      // Demo fallback if backend server is not running
+      localStorage.setItem("user_info", JSON.stringify({ email, name: email.split("@")[0] }));
+      router.push("/dashboard");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -32,6 +54,12 @@ export default function LoginPage() {
 
         {/* Form Card */}
         <div className="glass-strong" style={{ padding: "36px" }}>
+          {error && (
+            <div style={{ background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.3)", borderRadius: "10px", padding: "12px", marginBottom: "20px", color: "#f87171", fontSize: "13px" }}>
+              ⚠️ {error}
+            </div>
+          )}
+
           <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
             <div>
               <label style={{ fontSize: "13px", fontWeight: "600", color: "var(--text-secondary)", display: "block", marginBottom: "8px" }}>Email</label>

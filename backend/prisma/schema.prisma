@@ -1,0 +1,65 @@
+// prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Plan {
+  FREE
+  PRO
+  ENTERPRISE
+}
+
+model User {
+  id           String     @id @default(cuid())
+  email        String     @unique
+  name         String?
+  passwordHash String
+  plan         Plan       @default(FREE)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  resumes      Resume[]
+}
+
+model Resume {
+  id           String     @id @default(cuid())
+  userId       String?
+  user         User?      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  filename     String
+  fileType     String     // "pdf" | "docx" | "txt" | "odt"
+  fileUrl      String?    // S3 or Cloudinary URL
+  rawText      String?    @db.Text
+  uploadedAt   DateTime   @default(now())
+  analyses     Analysis[]
+}
+
+model Analysis {
+  id               String   @id @default(cuid())
+  resumeId         String
+  resume           Resume   @relation(fields: [resumeId], references: [id], onDelete: Cascade)
+  overallScore     Int
+  atsScore         Int
+  tone             String   @default("Professional")
+  sectionScores    Json     // [{ name, score, weight, icon }]
+  strengths        Json     // String[]
+  improvements     Json     // [{ priority, text }]
+  atsChecklist     Json     // [{ item, pass }]
+  keywords         Json     // { found: [], missing: [] }
+  jobDescription   String?  @db.Text
+  aiModel          String   @default("gemini-1.5-pro")
+  createdAt        DateTime @default(now())
+  report           Report?
+}
+
+model Report {
+  id         String   @id @default(cuid())
+  analysisId String   @unique
+  analysis   Analysis @relation(fields: [analysisId], references: [id], onDelete: Cascade)
+  fileUrl    String?  // Generated PDF report URL
+  createdAt  DateTime @default(now())
+}
